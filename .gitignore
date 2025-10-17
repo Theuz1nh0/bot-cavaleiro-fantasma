@@ -1,0 +1,17 @@
+# Bytecode do Python
+__pycache__/
+*.pyc
+
+# Arquivos de configuração sensíveis
+.env
+config.json
+
+# Logs e caches
+*.log
+*.sqlite3
+
+# Pastas do VS Code
+.vscode/
+
+# Pastas do sistema
+.DS_Store
