@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 from discord.ui import View, Select, Modal, TextInput
+import asyncio
 
 class AvisoModal(discord.ui.Modal, title="📋 Criar novo aviso"):
     titulo = discord.ui.TextInput(
@@ -34,7 +35,10 @@ class AvisoModal(discord.ui.Modal, title="📋 Criar novo aviso"):
             embed.set_thumbnail(url=self.canal_target.guild.icon.url)
         
         await self.canal_target.send(embed=embed)
-        await interaction.response.send_message("✅ Aviso enviado com sucesso!", ephemeral=True)
+        await interaction.response.send_message("✅ Aviso enviado com sucesso!", ephemeral=False)
+        msg = await interaction.original_response()
+        await asyncio.sleep(15)
+        await msg.delete()
 
 class CanalSelect(Select):
     def __init__(self, guild):
