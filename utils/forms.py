@@ -37,7 +37,7 @@ class AvisoModal(discord.ui.Modal, title="📋 Criar novo aviso"):
         await self.canal_target.send(embed=embed)
         await interaction.response.send_message("✅ Aviso enviado com sucesso!", ephemeral=False)
         msg = await interaction.original_response()
-        await asyncio.sleep(15)
+        await asyncio.sleep(10)
         await msg.delete()
 
 class CanalSelect(Select):
@@ -61,19 +61,3 @@ class FormularioView(View):
     def __init__(self, guild):
         super().__init__(timeout=None)
         self.add_item(CanalSelect(guild))
-
-"""
-class FormularioButton(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=None)
-
-    @discord.ui.button(label="Abrir formulário", style=discord.ButtonStyle.primary, emoji="📝")
-    async def abrir_form(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.channel_id != CANAL_FORMULARIO_ID:
-            await interaction.response.send_message(
-                "⚠️ Esse formulário só pode ser usado no canal correto!",
-                ephemeral=True
-            )
-            return
-        await interaction.response.send_modal(AvisoModal())
-"""
