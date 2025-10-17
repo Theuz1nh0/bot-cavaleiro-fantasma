@@ -4,7 +4,7 @@ from config import TOKEN
 import asyncio
 
 intents = discord.Intents.all()
-bot = commands.Bot(".", intents=intents)
+bot = commands.Bot("!", intents=intents)
 
 @bot.event
 async def on_ready():
