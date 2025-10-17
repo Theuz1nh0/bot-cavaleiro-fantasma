@@ -9,7 +9,7 @@ class Formulario(commands.Cog):
         self.bot = bot
     
     @commands.command()
-    async def aviso(self, ctx):
+    async def formulario(self, ctx):
         if ctx.channel.name != CANAL_AUTORIZADO:
             await ctx.send(f"❌ Este comando só pode ser usado no canal #{CANAL_AUTORIZADO}.", delete_after=10)
             return
