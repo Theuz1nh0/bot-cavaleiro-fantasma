@@ -17,7 +17,7 @@ class Formulario(commands.Cog):
         await ctx.message.delete(delay=5)
         #---  Envia o botão para abrir o formulário ---#
         view = FormularioView(ctx.guild)
-        await ctx.send("Escolha o canal onde o aviso será enviado:", view=view)
+        await ctx.send("Escolha o canal onde o aviso será enviado:", delete_after=10, view=view)
 
 async def setup(bot):
     await bot.add_cog(Formulario(bot))
