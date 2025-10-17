@@ -14,10 +14,10 @@ class Formulario(commands.Cog):
             await ctx.send(f"❌ Este comando só pode ser usado no canal #{CANAL_AUTORIZADO}.", delete_after=10)
             return
 
-        await ctx.menssage.delete(delay=5)
+        await ctx.message.delete(delay=60)
         #---  Envia o botão para abrir o formulário ---#
         view = FormularioView(ctx.guild)
-        await ctx.send("Escolha o canal onde o aviso será enviado:", view=view, delete_after=10)
+        await ctx.send("Escolha o canal onde o aviso será enviado:", delete_after=60, view=view)
 
 async def setup(bot):
     await bot.add_cog(Formulario(bot))
