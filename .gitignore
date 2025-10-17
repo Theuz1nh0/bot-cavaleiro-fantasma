@@ -3,7 +3,7 @@ __pycache__/
 *.pyc
 
 # Arquivos de configuração sensíveis
-*.env
+.env
 config.json
 
 # Logs e caches
