@@ -1,19 +1,18 @@
 import discord
 from discord.ext import commands
-from utils.forms import AvisoModal, CanalSelect, FormularioView
+from utils.forms import FormularioView
+from utils.checks import canal_permitido
 
 CANAL_AUTORIZADO = "┊formulários"
+CANAL_FORMULARIO = 1428595023615889440
 
 class Formulario(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
     
+    @canal_permitido([CANAL_FORMULARIO])
     @commands.command()
-    async def formulario(self, ctx):
-        if ctx.channel.name != CANAL_AUTORIZADO:
-            await ctx.send(f"❌ Este comando só pode ser usado no canal #{CANAL_AUTORIZADO}.", delete_after=10)
-            return
-
+    async def aviso(self, ctx):
         await ctx.message.delete(delay=60)
         #---  Envia o botão para abrir o formulário ---#
         view = FormularioView(ctx.guild)
