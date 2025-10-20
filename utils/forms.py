@@ -2,8 +2,14 @@ import discord
 from discord.ext import commands
 from discord.ui import View, Select, Modal, TextInput
 import asyncio
+from config import carregar_config
 
-class AvisoModal(discord.ui.Modal, title="📋 Criar novo aviso"):
+class AvisoModal(Modal, title="📋 Criar novo aviso"):
+    def __init__(self, bot, canal_destino):
+        super().__init__()
+        self.bot = bot
+        self.canal_destino = canal_destino
+
     titulo = discord.ui.TextInput(
         label="Título do aviso",
         placeholder="Digite o título...",
@@ -18,10 +24,6 @@ class AvisoModal(discord.ui.Modal, title="📋 Criar novo aviso"):
         required=True,
         max_length=1000
     )
-
-    def __init__(self, canal_target):
-        super().__init__()
-        self.canal_target = canal_target
 
     async def on_submit(self, interaction: discord.Integration):
         embed = discord.Embed(
@@ -41,23 +43,38 @@ class AvisoModal(discord.ui.Modal, title="📋 Criar novo aviso"):
         await msg.delete()
 
 class CanalSelect(Select):
-    def __init__(self, guild):
-        canais_permitidos = ["┊・𝕀𝕟𝕥𝕣𝕠𝕕𝕦𝕔̧𝕒̃𝕠", "┊・𝔸𝕧𝕚𝕤𝕠𝕤"]
+    def __init__(self, bot):
+        self.bot = bot
+        config = carregar_config()
+        canais_ids = config.get("canais_para_aviso", [])
         options = []
 
-        for nome in canais_permitidos:
-            canal_obj = discord.utils.get(guild.text_channels, name=nome)
-            if canal_obj:
-                options.append(discord.SelectOption(label=nome, value=str(canal_obj.id)))
+        for canal_id in canais_ids:
+            canal = bot.get_channel(canal_id)
+            if canal and isinstance(canal, discord.TextChannel):
+                options.append(discord.SelectOption(label=canal.name, value=str(canal.id)))
 
-        super().__init__(placeholder="Escolha o canal de destino", options=options)
+        if not options:
+            options = [discord.SelectOption(label="Nenhum canal disponível", value="none")]
+
+        super().__init__(
+            placeholder="Escolha o canal de destino...",
+            min_values=1,
+            max_values=1,
+            options=options
+        )
 
     async def callback(self, interaction: discord.Integration):
+        if self.values[0] == "none":
+            await interaction.response.send_message("⚠️ Nenhum canal foi configurado ainda.", ephemeral=True)
+            return
+        
         canal_id = int(self.values[0])
-        canal_target = interaction.guild.get_channel(canal_id)
-        await interaction.response.send_modal(AvisoModal(canal_target))
-
+        canal_destino = self.bot.get_channel(canal_id)
+        modal = AvisoModal(self.bot, canal_destino)
+        await interaction.response.send_modal(modal)
+        
 class FormularioView(View):
-    def __init__(self, guild):
+    def __init__(self, bot):
         super().__init__(timeout=None)
-        self.add_item(CanalSelect(guild))
+        self.add_item(CanalSelect(bot))
