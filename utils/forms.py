@@ -4,12 +4,8 @@ from discord.ui import View, Select, Modal, TextInput
 import asyncio
 from config import carregar_config
 
-class AvisoModal(Modal, title="📋 Criar novo aviso"):
-    def __init__(self, bot, canal_destino):
-        super().__init__()
-        self.bot = bot
-        self.canal_destino = canal_destino
 
+class AvisoModal(Modal, title="📋 Criar novo aviso"):
     titulo = discord.ui.TextInput(
         label="Título do aviso",
         placeholder="Digite o título...",
@@ -25,7 +21,26 @@ class AvisoModal(Modal, title="📋 Criar novo aviso"):
         max_length=1000
     )
 
-    async def on_submit(self, interaction: discord.Integration):
+    def __init__(self, bot, canal_destino: discord.TextChannel):
+        super().__init__()
+        self.bot = bot
+        self.canal_destino = canal_destino
+
+        # print(f"teste para AvisoModal: {canal_destino}")
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+
+        canal = self.canal_destino
+        if canal is None:
+            await interaction.followup.send("❌ Canal de destino não encontrado.", ephemeral=True)
+            return
+        
+        perms = canal.permissions_for(interaction.guild.me)
+        if not perms.send_messages:
+            await interaction.followup.send("❌ Não tenho permissão para enviar mensagens nesse canal.", ephemeral=True)
+            return
+
         embed = discord.Embed(
             title=f"📢 {self.titulo.value}",
             description=self.descricao.value,
@@ -33,14 +48,22 @@ class AvisoModal(Modal, title="📋 Criar novo aviso"):
         )
 
         # Define a imagem do servidor como thumbnail
-        if self.canal_target.guild.icon:    # verifica se o servidor tem ícone
-            embed.set_thumbnail(url=self.canal_target.guild.icon.url)
-        
-        await self.canal_target.send(embed=embed)
-        await interaction.response.send_message("✅ Aviso enviado com sucesso!", ephemeral=False)
-        msg = await interaction.original_response()
-        await asyncio.sleep(10)
-        await msg.delete()
+        if interaction.guild and interaction.guild.icon:
+            embed.set_thumbnail(url=interaction.guild.icon.url)
+
+        try:
+            await canal.send(embed=embed)
+        except Exception as e:
+            # logue a exceção no console para debugar
+            print("Erro ao enviar embed:", repr(e))
+            await interaction.followup.send("❌ Falha ao enviar o aviso. Verifique permissões e se o canal existe.", ephemeral=True)
+            return
+
+        await interaction.followup.send("✅ Aviso enviado com sucesso!", ephemeral=True)
+        # msg = await interaction.original_response()
+        # await asyncio.sleep(10)
+        # await msg.delete()
+
 
 class CanalSelect(Select):
     def __init__(self, bot):
@@ -52,10 +75,12 @@ class CanalSelect(Select):
         for canal_id in canais_ids:
             canal = bot.get_channel(canal_id)
             if canal and isinstance(canal, discord.TextChannel):
-                options.append(discord.SelectOption(label=canal.name, value=str(canal.id)))
+                options.append(discord.SelectOption(
+                    label=canal.name, value=str(canal.id)))
 
         if not options:
-            options = [discord.SelectOption(label="Nenhum canal disponível", value="none")]
+            options = [discord.SelectOption(
+                label="Nenhum canal disponível", value="none")]
 
         super().__init__(
             placeholder="Escolha o canal de destino...",
@@ -64,16 +89,19 @@ class CanalSelect(Select):
             options=options
         )
 
-    async def callback(self, interaction: discord.Integration):
+    async def callback(self, interaction: discord.Interaction):
         if self.values[0] == "none":
             await interaction.response.send_message("⚠️ Nenhum canal foi configurado ainda.", ephemeral=True)
             return
-        
+
         canal_id = int(self.values[0])
         canal_destino = self.bot.get_channel(canal_id)
         modal = AvisoModal(self.bot, canal_destino)
+
+        # print(f"teste para CanalSect: {canal_destino}")
         await interaction.response.send_modal(modal)
-        
+
+
 class FormularioView(View):
     def __init__(self, bot):
         super().__init__(timeout=None)
