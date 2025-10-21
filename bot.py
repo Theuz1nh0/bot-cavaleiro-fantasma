@@ -14,6 +14,7 @@ async def load_cogs():
     await bot.load_extension("cogs.comandos_gerais")
     await bot.load_extension("cogs.eventos")
     await bot.load_extension("cogs.formulario")
+    await bot.load_extension("cogs.levels")
 
 async def main():
     async with bot:
