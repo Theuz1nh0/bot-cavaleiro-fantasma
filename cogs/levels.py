@@ -138,14 +138,26 @@ class LevelSystem(commands.Cog):
         member = member or ctx.author
         uid = str(member.id)
         user_data = self.data.get(uid, {"xp": 0, "level": 1, "voice_total": 0})
+        user_xp = user_data["xp"]
+        xp_needed = 100 * (1.0625 ** (user_data["level"] - 1))
+
+        # Calcula a porcentagem de XP
+        percent = user_xp / xp_needed
+        bar_length = 10  # número de blocos da barra
+        filled_length = int(bar_length * percent)
+        empty_length = bar_length - filled_length
+
+        progress_bar = "▬" * filled_length + "──" * empty_length
+        progress_display = f"[{progress_bar}] {int(percent * 100)}%"
 
         embed = discord.Embed(
             title=f"📊 Nível de {member.display_name}",
             color=discord.Color.blurple()
         )
         embed.add_field(name="🧩 Nível", value=user_data["level"])
-        embed.add_field(name="✨ XP", value=user_data["xp"])
+        embed.add_field(name="✨ XP", value=user_xp)
         embed.add_field(name="🎧 Tempo total em call", value=f"{user_data['voice_total']} min")
+        embed.add_field(name="Progresso", value=progress_display, inline=False)
         embed.set_thumbnail(url=member.display_avatar.url)
         embed.set_footer(text=f"Solicitado por {ctx.author.display_name}")
 

@@ -5,6 +5,7 @@ __pycache__/
 # Arquivos de configuração sensíveis
 .env
 config.json
+levels.json
 
 # Logs e caches
 *.log
