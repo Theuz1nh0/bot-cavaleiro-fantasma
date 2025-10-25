@@ -13,6 +13,7 @@ class LevelSystem(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.data = self.load_data()
+        self.config = self.load_config()
         self.voice_times = {}
         self.save_loop.start()
 
@@ -30,7 +31,10 @@ class LevelSystem(commands.Cog):
         with open(DATA_PATH, "w") as f:
             json.dump(self.data, f, indent=4)
 
-    
+    def load_config(self):
+        with open("config.json", "r", encoding="utf-8") as f:
+            return json.load(f)
+
     @tasks.loop(minutes=5)
     async def save_loop(self):
         self.save_data()
@@ -46,8 +50,10 @@ class LevelSystem(commands.Cog):
         self.data[uid]["xp"] += xp_amount
         current_xp = self.data[uid]["xp"]
         current_level = self.data[uid]["level"]
+        XP1 = 100
+        r = 1.0625
 
-        next_level_xp = current_level * 100
+        next_level_xp = XP1 * (r ** (current_level - 1))
 
         if current_xp >= next_level_xp:
             self.data[uid]["level"] += 1
@@ -66,14 +72,18 @@ class LevelSystem(commands.Cog):
         # print(message)
         # print(message.channel.name)
         
-        xp_ganho = random.randint(5, 15)
+        xp_ganho = 5
         subiu = self.add_xp(message.author.id, xp_ganho)
         self.save_data()
+        user_id = str(message.author.id)
 
         if subiu:
             await message.channel.send(
-                f"🎉 {message.author.mention} subiu para o **nível {self.data[str(message.author.id)]['level']}!**"
+                f"🎉 {message.author.mention} subiu para o **nível {self.data[user_id]['level']}!**"
             )
+
+            # Tenta aplicar cargo se houver
+            await self.give_role_based_on_level(message.author, self.data[user_id]["level"])
 
     # -------------------------------
     # XP POR TEMPO EM CALL
@@ -138,6 +148,73 @@ class LevelSystem(commands.Cog):
         embed.set_footer(text=f"Solicitado por {ctx.author.display_name}")
 
         await ctx.send(embed=embed)
+
+    async def give_role_based_on_level(self, member: discord.Member, level: int):
+        """
+        Dá o cargo apropriado ao membro baseado no nível e remove cargos
+        de níveis anteriores (os definidos em config.json).
+        """
+        guild = member.guild
+        roles_map = self.config.get("level_roles", {})
+
+        if not roles_map:
+            return
+
+        # Converte e ordena os níveis (do maior para o menor)
+        level_items = sorted(
+            ((int(k), int(v)) for k, v in roles_map.items()),
+            key=lambda x: x[0],
+            reverse=True
+        )
+
+        # Acha o cargo alvo (o maior nível que o usuário já atingiu)
+        target_role = None
+        target_level = None
+        for lvl, role_id in level_items:
+            if level >= lvl:
+                target_role = guild.get_role(role_id)
+                target_level = lvl
+                break
+
+        # Se não existe cargo correspondente, apenas remova cargos antigos (se quiser)
+        role_ids_config = {int(rid) for _, rid in level_items}
+
+        # Lista de cargos do membro que fazem parte do sistema de level roles
+        member_level_roles = [r for r in member.roles if r.id in role_ids_config]
+
+        # Se o target_role for None, apenas remova qualquer cargo de level (opcional)
+        # Caso queira não remover se não houver target, comente a remoção.
+        try:
+            # Primeiro: remover cargos de nível que não são o target
+            for r in member_level_roles:
+                if target_role and r.id == target_role.id:
+                    continue  # preserva o target
+                # tenta remover
+                try:
+                    await member.remove_roles(r, reason="Atualização de cargos por level")
+                except discord.Forbidden:
+                    # bot não tem permissão para remover este cargo (role hierarchy)
+                    print(f"[WARN] Não foi possível remover role {r.id} ({r.name}) do membro {member.id} — permissões.")
+                except Exception as e:
+                    print(f"[ERROR] Erro ao remover role {r.id} do membro {member.id}: {e}")
+
+            # Depois: adiciona o cargo alvo (se existir e o membro não tiver)
+            if target_role:
+                if target_role not in member.roles:
+                    try:
+                        await member.add_roles(target_role, reason=f"Alcançou o nível {target_level}")
+                        # opcional: enviar DM
+                        try:
+                            await member.send(f"🏅 Você alcançou o nível {level} no discord de {guild} e recebeu o cargo de **{target_role.name}**!")
+                        except Exception:
+                            pass  # ignora falha em DM
+                    except discord.Forbidden:
+                        print(f"[WARN] Não foi possível adicionar role {target_role.id} ({target_role.name}) ao membro {member.id} — permissões.")
+                    except Exception as e:
+                        print(f"[ERROR] Erro ao adicionar role {target_role.id} ao membro {member.id}: {e}")
+        except Exception as e:
+            print(f"[ERROR] give_role_based_on_level geral: {e}")
+
 
 async def setup(bot):
     await bot.add_cog(LevelSystem(bot))
