@@ -1,2 +1,6 @@
+# usar o comando abaixo para atualizar este arquivo
+# com as dependências do projeto
+# pipreqs . --force --encoding=utf-8
+
 discord.py==2.6.4
 python-dotenv==1.1.1

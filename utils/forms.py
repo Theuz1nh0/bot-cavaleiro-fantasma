@@ -3,6 +3,8 @@ from discord.ext import commands
 from discord.ui import View, Select, Modal, TextInput
 import asyncio
 from config import carregar_config
+import aiohttp
+import io
 
 
 class AvisoModal(Modal, title="📋 Criar novo aviso"):
@@ -29,40 +31,59 @@ class AvisoModal(Modal, title="📋 Criar novo aviso"):
         # print(f"teste para AvisoModal: {canal_destino}")
 
     async def on_submit(self, interaction: discord.Interaction):
-        await interaction.response.defer(ephemeral=True)
-
-        canal = self.canal_destino
-        if canal is None:
-            await interaction.followup.send("❌ Canal de destino não encontrado.", ephemeral=True)
-            return
-        
-        perms = canal.permissions_for(interaction.guild.me)
-        if not perms.send_messages:
-            await interaction.followup.send("❌ Não tenho permissão para enviar mensagens nesse canal.", ephemeral=True)
-            return
-
-        embed = discord.Embed(
-            title=f"📢 {self.titulo.value}",
-            description=self.descricao.value,
-            color=discord.Color.orange()
+        await interaction.response.send_message(
+            "Agora envie uma imagem para anexar ao aviso (ou digite `pular` para enviar sem imagem).",
+            ephemeral=True
         )
 
-        # Define a imagem do servidor como thumbnail
-        if interaction.guild and interaction.guild.icon:
-            embed.set_thumbnail(url=interaction.guild.icon.url)
+        def check(msg):
+            return msg.author == interaction.user and msg.channel == interaction.channel
 
         try:
-            await canal.send(embed=embed)
-        except Exception as e:
-            # logue a exceção no console para debugar
-            print("Erro ao enviar embed:", repr(e))
-            await interaction.followup.send("❌ Falha ao enviar o aviso. Verifique permissões e se o canal existe.", ephemeral=True)
-            return
+            msg = await self.bot.wait_for("message", check=check, timeout=60)
 
-        await interaction.followup.send("✅ Aviso enviado com sucesso!", ephemeral=True)
-        # msg = await interaction.original_response()
-        # await asyncio.sleep(10)
-        # await msg.delete()
+            if msg.content.lower() == "pular":
+                image_url = None
+            elif msg.attachments:
+                # Baixa a imagem para anexar junto com o embed
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(msg.attachments[0].url) as resp:
+                        imagem_bytes = io.BytesIO(await resp.read())
+                        imagem_bytes.seek(0)
+            else:
+                await interaction.followup.send("Nenhuma imagem válida foi enviada. Enviando aviso sem imagem.", ephemeral=True)
+                image_url = None
+            
+            embed = discord.Embed(
+                title=f"📢 {self.titulo.value}",
+                description=self.descricao.value,
+                color=discord.Color.orange()
+            )
+
+            # Define a imagem do servidor como thumbnail
+            if interaction.guild and interaction.guild.icon:
+                embed.set_thumbnail(url=interaction.guild.icon.url)
+
+            canal = self.canal_destino
+            if canal:
+                if imagem_bytes:
+                    file = discord.File(imagem_bytes, filename="aviso.png")
+                    await canal.send(file=file, embed=embed)
+                else:
+                    await canal.send(embed=embed)
+                    
+                await interaction.followup.send("✅ Aviso enviado com sucesso!", ephemeral=True)
+            else:
+                await interaction.followup.send("❌ Canal 'avisos' não encontrado.", ephemeral=True)
+            
+            await msg.delete()
+
+
+            # msg = await interaction.original_response()
+            # await asyncio.sleep(10)
+            # await msg.delete()
+        except asyncio.TimeoutError:
+            await interaction.followup.send("⏰ Tempo esgotado. Nenhuma imagem foi enviada.", ephemeral=True)
 
 
 class CanalSelect(Select):

@@ -63,8 +63,8 @@ class LevelSystem(commands.Cog):
         if message.author.bot:
             return
         
-        print(message)
-        print(message.channel.name)
+        # print(message)
+        # print(message.channel.name)
         
         xp_ganho = random.randint(5, 15)
         subiu = self.add_xp(message.author.id, xp_ganho)
