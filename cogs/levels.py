@@ -127,6 +127,8 @@ class LevelSystem(commands.Cog):
                             f"{self.data[uid]['level']} após passar {minutes} minutos em call!"
                         )
 
+                        await self.give_role_based_on_level(member, self.data[member.id]["level"])
+
     # -------------------------------
     # COMANDO RANK
     # -------------------------------
