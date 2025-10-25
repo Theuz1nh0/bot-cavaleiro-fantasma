@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands, tasks
 import json
 import os
-import random
+import asyncio
 from datetime import datetime
 from utils.checks import canal_permitido
 
@@ -14,8 +14,7 @@ class LevelSystem(commands.Cog):
         self.bot = bot
         self.data = self.load_data()
         self.config = self.load_config()
-        self.voice_times = {}
-        self.save_loop.start()
+        self.active_users = {}
 
     # -------------------------------
     # MANIPULAÇÃO DE ARQUIVO
@@ -35,15 +34,11 @@ class LevelSystem(commands.Cog):
         with open("config.json", "r", encoding="utf-8") as f:
             return json.load(f)
 
-    @tasks.loop(minutes=5)
-    async def save_loop(self):
-        self.save_data()
-
     # -------------------------------
     # SISTEMA DE XP
     # -------------------------------
-    def add_xp(self, user_id, xp_amount):
-        uid = str(user_id)
+    def add_xp(self, member, xp_amount):
+        uid = str(member)
         if uid not in self.data:
             self.data[uid] = {"xp": 0, "level": 1, "voice_total": 0}
 
@@ -92,42 +87,51 @@ class LevelSystem(commands.Cog):
     async def on_voice_state_update(self, member, before, after):
         if member.bot:
             return
-        
-        uid = str(member.id)
 
         # Entrou em call
-        if before.channel is None and after.channel is not None:
-            self.voice_times[uid] = datetime.now()
-            print("comecou a contar")
+        if after.channel and not before.channel:
+            if member.id not in self.active_users:
+                task = asyncio.create_task(self.track_voice_xp(member))
+                self.active_users[member.id] = task
+                print(f"[LEVELS] Loop iniciado para {member.display_name}")
 
         # Saiu da call
-        elif before.channel is not None and after.channel is None:
-            print("terminou de contar")
+        elif before.channel and not after.channel:
+            if member.id in self.active_users:
+                self.active_users[member.id].cancel()
+                del self.active_users[member.id]
+                print(f"[LEVELS] {member.display_name} saiu da call (loop cancelado)")
+    
+    async def track_voice_xp(self, member: discord.Member):
+        uid = str(member.id)
 
-            if uid in self.voice_times:
-                joined_at = self.voice_times.pop(uid)
-                duration = (datetime.now() - joined_at).total_seconds()
-                minutes = int(duration // 60)
+        if uid not in self.data:
+            self.data[uid] = {"xp": 0, "level": 1, "voice_total": 0}
 
-                print(minutes)
-                if minutes > 0:
-                    #soma tempo total em call
-                    if uid not in self.data:
-                        self.data[uid] = {"xp": 0, "nivel": 1, "voice_total": 0}
+        try:
+            while True:
+                await asyncio.sleep(60)
 
-                    self.data[uid]["voice_total"] += minutes
+                if not member.voice or not member.voice.channel:
+                    print(f"[LEVELS] {member.display_name} saiu da call (detectado pelo loop)")
+                    break
 
-                    xp_ganho = minutes * 2 # 2 XP por minuto em call
-                    subiu  = self.add_xp(member.id, xp_ganho)
-                    self.save_data()
+                subiu = self.add_xp(member.id, 2)
+                self.data[uid]["voice_total"] += 1
 
-                    if subiu:
-                        await after.channel.send(
-                            f"🎙️ {member.mention} subiu para o nível "
-                            f"{self.data[uid]['level']} após passar {minutes} minutos em call!"
-                        )
+                print(subiu)
 
-                        await self.give_role_based_on_level(member, self.data[member.id]["level"])
+                if subiu:
+                    try:
+                        await member.voice.channel.send(f"🎉 {member.mention} subiu para o **nível {self.data[uid]['level']}!**")
+                        await self.give_role_based_on_level(member, self.data[uid]["level"])
+                    except discord.Forbidden:
+                        print(f"[LEVELS] Não consegui enviar a mensagem")
+
+                self.save_data()
+        except asyncio.CancelledError:
+            pass
+
 
     # -------------------------------
     # COMANDO RANK
