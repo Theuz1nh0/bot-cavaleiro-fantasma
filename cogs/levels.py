@@ -144,6 +144,21 @@ class LevelSystem(commands.Cog):
         user_data = self.data.get(uid, {"xp": 0, "level": 1, "voice_total": 0})
         user_xp = user_data["xp"]
         xp_needed = 100 * (1.0625 ** (user_data["level"] - 1))
+        voice_total = user_data["voice_total"]
+        voice_horas = None
+        voice_minutes = None
+
+        if voice_total >= 60:
+            voice_horas = voice_total // 60
+            if voice_total % 60 > 0:
+                voice_minutes = voice_total - (voice_horas * 60)
+
+        tempo_call = f"{voice_total}min"
+
+        if voice_horas:
+            tempo_call = f"{voice_horas}h"
+            if voice_minutes:
+                tempo_call = f"{voice_horas}h {voice_minutes}min"
 
         # Calcula a porcentagem de XP
         percent = user_xp / xp_needed
@@ -160,7 +175,7 @@ class LevelSystem(commands.Cog):
         )
         embed.add_field(name="🧩 Nível", value=user_data["level"])
         embed.add_field(name="✨ XP", value=user_xp)
-        embed.add_field(name="🎧 Tempo total em call", value=f"{user_data['voice_total']} min")
+        embed.add_field(name="🎧 Tempo total em call", value=f"{tempo_call}")
         embed.add_field(name="Progresso", value=progress_display, inline=False)
         embed.set_thumbnail(url=member.display_avatar.url)
         embed.set_footer(text=f"Solicitado por {ctx.author.display_name}")
