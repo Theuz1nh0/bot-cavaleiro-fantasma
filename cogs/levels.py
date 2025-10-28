@@ -67,7 +67,7 @@ class LevelSystem(commands.Cog):
         # print(message)
         # print(message.channel.name)
         
-        xp_ganho = 5
+        xp_ganho = 2
         subiu = self.add_xp(message.author.id, xp_ganho)
         self.save_data()
         user_id = str(message.author.id)
