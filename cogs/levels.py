@@ -73,9 +73,9 @@ class LevelSystem(commands.Cog):
         user_id = str(message.author.id)
 
         if subiu:
-            await message.channel.send(
-                f"🎉 {message.author.mention} subiu para o **nível {self.data[user_id]['level']}!**"
-            )
+            # await message.channel.send(
+            #     f"🎉 {message.author.mention} subiu para o **nível {self.data[user_id]['level']}!**"
+            # )
 
             # Tenta aplicar cargo se houver
             await self.give_role_based_on_level(message.author, self.data[user_id]["level"])
@@ -123,7 +123,7 @@ class LevelSystem(commands.Cog):
 
                 if subiu:
                     try:
-                        await member.voice.channel.send(f"🎉 {member.mention} subiu para o **nível {self.data[uid]['level']}!**")
+                        # await member.voice.channel.send(f"🎉 {member.mention} subiu para o **nível {self.data[uid]['level']}!**")
                         await self.give_role_based_on_level(member, self.data[uid]["level"])
                     except discord.Forbidden:
                         print(f"[LEVELS] Não consegui enviar a mensagem")
